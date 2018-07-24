@@ -3,7 +3,7 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: 前端技术博客
+title: 前端技术文档
 subtitle: stay hungry, stay foolish
 author: o2xx
 language: zh
@@ -21,10 +21,10 @@ permalink_defaults:
 # Site settings
 # 网站综合内容设置：
 SEOTitle: FEGO BLOG
-header-img: img/home-bg.jpg
-email: lianghr1988@foxmail.com
-description: "FEGO BLOG"
-keyword: "FEGO"
+# header-img: img/home-bg.jpg
+# email: lianghr1988@foxmail.com
+# description: "FEGO BLOG"
+# keyword: "FEGO"
 
 # SNS settings
 # 一些社交平台地址，支持以下几种：
@@ -38,7 +38,7 @@ keyword: "FEGO"
 # Build settings
 anchorjs: true # if you want to customize anchor. check out line:181 of `post.html`
 
-sidebar-avatar: img/avatar.jpg # use absolute URL, seeing it's used in both `/` and `/about/`
+# sidebar-avatar: img/avatar.jpg # use absolute URL, seeing it's used in both `/` and `/about/`
 
 # Friends
 # 友情链接
