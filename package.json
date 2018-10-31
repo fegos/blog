@@ -20,7 +20,7 @@
   "scripts": {
     "start": "hexo server",
     "build": "hexo generate",
-    "deploy": "hexo deploy",
+    "deploy": "npm run build && hexo deploy",
     "clean": "hexo clean"
   }
 }
