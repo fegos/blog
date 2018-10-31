@@ -1,6 +1,6 @@
 ---
 title: redux源码阅读
-date: 2017-09-19 11:51:23
+date: 2017-09-19
 tags: redux
 author: Henry
 ---

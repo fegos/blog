@@ -4,8 +4,8 @@
 
 # Site
 title: 前端技术文档
-subtitle: stay hungry, stay foolish
-author: o2xx
+subtitle: FEGO大前端
+author: FEGO
 language: zh
 timezone:
 
@@ -70,32 +70,11 @@ post_style:
 source_dir: source
 public_dir: public
 tag_dir: tags
-archive_dir: archive
+archive_dir: archives
 category_dir: categories
 code_dir: downloads/code
 i18n_dir: :lang
 skip_render:
-
-# Writing
-new_post_name: :title.md # File name of new posts
-default_layout: post
-titlecase: false # Transform title into titlecase
-external_link: true # Open external links in new tab
-filename_case: 0
-render_drafts: false
-post_asset_folder: true
-relative_link: false
-future: true
-highlight:
-  enable: true
-  line_number: true
-  auto_detect: true
-  tab_replace:
-
-# Category & Tag
-default_category: uncategorized
-category_map:
-tag_map:
 
 # Date / Time format
 ## Hexo uses Moment.js to parse and display date
@@ -112,11 +91,11 @@ pagination_dir: page
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: aircloud
+theme: polarbear
 
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
-#deploy:
-#  type: git
-#  repo: your repo url
-#  branch: master
+deploy:
+ type: git
+ repo: https://github.com/o2xx/o2xx.github.io.git
+ branch: master
