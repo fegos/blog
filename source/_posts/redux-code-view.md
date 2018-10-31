@@ -1,8 +1,8 @@
 ---
-title: redux源码阅读
+title: Redux源码解析（一）
 date: 2017-09-19
 tags: redux
-author: Henry
+author: henry
 ---
 # 前言
 Redux是React的一个状态管理工具，或许大家已经比较熟悉了它的使用方式，比如创建store，发起action，使用reducer更新state等等，那么它的内部是如何实现的呢？为了更好的熟悉和使用Redux，我们选择了`3.7.2`版本进行源码阅读，并在这里跟大家分享一下心得。

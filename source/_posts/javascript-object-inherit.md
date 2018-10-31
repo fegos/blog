@@ -2,30 +2,43 @@
 title: JS对象继承
 date: 2017-08-11
 tags: JavaScript
-author: fego
+author: lucky3mvp
 ---
-# JS 继承
 
-+ 对象 B 继承对象 A：让对象 B 可以拥有对象 A 的属性和方法
+## 构造函数
 
-### 问题复现：请运行 app, 打开控制台，查看 page 实例 
+**对象 B 继承对象 A：让对象 B 可以拥有对象 A 的属性和方法**
+
++ 假设现有 Father 类，拥有属性 name, age
++ 同时，Father 类原型有方法 getAge, sayHi
+
 ```js
-page 实例 -> __proto__ -> constructor -> __proto__ / prototype ......
+function Father(name, age) {
+    this.name = name;
+    this.age = age;
+}
+
+Father.prototype.getAge = function() {
+    return this.age; 
+}
+
+Father.prototype.sayHi = function() {
+    return `Hi ${this.name}`
+}
 ```
-![inherit](https://attachments.tower.im/tower/2fcde5563c8d414eb98da878e08425b0?filename=basepage.png)
 
-## 其他
+## Prototype
 
-### prototype
-- 每个类都有一个原型对象，也即 prototype，类和类原型的关系为：
+**类的原型**
+
 ```js
-类的 prototype 属性指向类原型对象；
-类原型的 constructor 属性指向类自身； 
-// A.prototype.constructor === A
+类的 prototype 属性指向类原型对象
+类原型的 constructor 属性指向类自身
+A.prototype.constructor === A
 ```
 ![obj&it's prototype](https://attachments.tower.im/tower/1c24e97d5440461fb8c74714546c0741?filename=obj+and+its+prototype.png)
 
-- 实例可以拥有 prototype 对象里的属性和方法。
+实例可以拥有 prototype 对象里的属性和方法。
 
 ```js
 // 变量 arr 继承了 Array 原型的 indexOf 方法
@@ -62,9 +75,10 @@ instance.sayHi();       // "hi asy!"
 instance.saySorry();    // error: instance.saySorry is not a function
 ```
 
-### HOW - 实例怎么继承原型对象方法 ?
+![obj&it's inherit](https://attachments.tower.im/tower/f4f7314829c84127b5ed75ba93f9c3c7?filename=obj%26pro%26ins.png)
 
-### 原型链
+**原型链**
+
 JS 实例对象有一个指向原型对象的指针(例如：浏览器显示的`__proto__`)。当访问一个对象的属性时：
 1. 先在该对象上搜寻，若找到则结束，若找不到进入第二步；
 2. 在该对象的`__proto__`指向的对象上继续寻找，找到则结束，找不到重复第二步；
@@ -82,34 +96,9 @@ a.__proto__ === A.prototype
 a.__proto__.constructor === A
 ```
 
-![https://attachments.tower.im/tower/f4f7314829c84127b5ed75ba93f9c3c7?filename=obj%26pro%26ins.png)
+**子类与父类**
 
-
-## JS 继承
-
-#### 对象 B 继承对象 A：让对象 B 可以拥有对象 A 的属性和方法
-
-+ 假设现有 Father 类，拥有属性 name, age
-+ 同时，Father 类原型有方法 getAge, sayHi
-
-```js
-function Father(name, age) {
-    this.name = name;
-    this.age = age;
-}
-
-Father.prototype.getAge = function() {
-    return this.age; 
-}
-
-Father.prototype.sayHi = function() {
-    return `Hi ${this.name}`
-}
-```
-
-## es6 之前的继承：
-
-### 原型链 prototype 的继承：**将子类的原型当做父类的实例来让子类原型继承父类的属性和方法，从而子类的实例能继承父类的实例和方法**
+将子类的原型当做父类的实例来让子类原型继承父类的属性和方法，从而子类的实例能继承父类的实例和方法
 
 ```js
 function Child(name, age, school) {
@@ -134,8 +123,6 @@ childIns.sayHi();               // 'Hi father'
 childIns.getAge();              // 50
 ```
 
-#### 此时的关系图:
-
 ```js
 // Father 和 Father 实例的关系
 fatherIns.constructor === Father
@@ -153,11 +140,9 @@ Child.prototype.__proto__ === Father.prototype
 
 ![prototype inherit](https://attachments.tower.im/tower/1301acd2c59e4f4abdff1333425be1f2?filename=ES5.png)
 
+## **ES6 继承**
 
-## es6 继承：关键字 extends
-
-### es5 的继承是先创造子类的实例对象，再将父类的方法添加到子类对象 this 上面；
-### es6 的继承则不同，其实质是先创造父类的实例对象 this（也因此子类的 constructor 必须先调用 super 方法），然后再用子类的构造函数修改 this
+其实质是先创造父类的实例对象 this（也因此子类的 constructor 必须先调用 super 方法），然后再用子类的构造函数修改 this
 
 ```js
 // 父类
@@ -201,7 +186,7 @@ fatherIns._sayHi();             // 'Hi father'
 fatherIns._getAge();            // 50
 ```
 
-es6 的继承语法更符合程序员以往接触的继承方式，并且 es6 继承依然拥有 es5 继承的特性：
+ES6 的继承语法更符合程序员以往接触的继承方式，并且 ES6 继承依然拥有 ES5 继承的特性：
 
 ```js
 // Father 和 Father 实例的关系
@@ -223,19 +208,18 @@ Child.prototype.__proto__ === Father.prototype
 Child.__proto__ === Father
 ```
 
-![er6 inherit](https://attachments.tower.im/tower/0f82d45ff5424ccf9fc20127f03f557e?filename=inheritComp.png)
+![ES6 inherit](https://attachments.tower.im/tower/0f82d45ff5424ccf9fc20127f03f557e?filename=inheritComp.png)
 
-在 es6 中，子类会有两条继承链：
-+ 一条同普通继承一样，子类原型的 `__proto__` 属性指向父类原型；
-+ 而另一条继承链，子类的 `__proto__` 属性直接指向了父类
+**两条继承链**
++ 原型链，子类原型的 `__proto__` 属性指向父类原型
++ 类链，子类的 `__proto__` 属性直接指向了父类
+
 ```js
 Child.prototype.__proto__ === Father.prototype
 Child.__proto__ === Father
 ```
-
-### why ?
 ```js
-// es6 继承语法
+// ES6 继承语法
 class Child extends Father {}
 
 // 等同于
@@ -251,11 +235,6 @@ Object.setPrototypeOf = function (obj, proto) {
     return obj;
 }
 ```
-
-#### 助记
-> 子类的 `__proto__` 属性，表示类的继承，总是指向父类;
->
-> 子类原型对象的 `__proto__` 属性，表示原型方法的继承，总是指向父类的原型对象;
 
 ### 三类特殊的继承
 + 继承 Object 类
