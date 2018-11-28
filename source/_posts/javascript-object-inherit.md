@@ -1,7 +1,7 @@
 ---
 title: JS对象继承
 date: 2017-08-11
-tags: JavaScript
+tags: javascript
 author: lucky3mvp
 ---
 

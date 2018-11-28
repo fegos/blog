@@ -18,7 +18,7 @@
     "hexo-server": "^0.2.2"
   },
   "scripts": {
-    "start": "hexo server",
+    "start": "hexo server --draft",
     "build": "hexo generate",
     "deploy": "npm run build && hexo deploy",
     "clean": "hexo clean"

@@ -65,6 +65,9 @@ search:
 post_style:
   indent: indent
 
+# 默认模板
+default_layout: draft
+
 # Custom Setting End
 # Directory
 source_dir: source
