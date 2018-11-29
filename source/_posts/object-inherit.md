@@ -1,5 +1,5 @@
 ---
-title: Javascript中的继承
+title: Javascript中的对象、函数以及类的继承
 tags: javascript
 author: henry
 date: 2018-11-27 00:00:00
@@ -144,6 +144,9 @@ B.print()   // ???
 * 通过类的`prototype`属性, 构造出类实例的原型链, 实现私有属性的继承
 * 通过类的`__proto__`属性, 构造出类的原型链, 实现静态属性的继承
 
+**继承关系（B extends A）**
+![image](/images/object-inherit.png)
+
 ## instanceof的原理
 
 引用MDN文档中关于`instanceof`操作符的解释
@@ -180,9 +183,9 @@ b instanceof A    // ???
 
 **Object是对象的构造函数, Function是函数的构造函数**
 
-* Object的构造函数是Function吗?
-* Object也是一个对象, 那它的构造函数会不会是自己？
-* Function是函数也是对象, 那么它的构造函数又是谁呢？是自己吗？还是Object？
+* Object是一个函数, 那它是Function的一个实例吗?
+* Object也是一个对象, 那它会不会是自己的一个实例？
+* Function是函数也是对象, 那么它又是谁的实例呢？是Function？还是Object？
 
 我们从原型和继承的角度, 分析一下Object和Function之间的关系。
 
@@ -249,3 +252,7 @@ Function的实例化稍有不同:
 * 生成新实例对象, 其`__proto__`指向`Function.prototype`
 * 实例对象（fn）为Function类型, 可执行实例化生成新对象（Object类型）
 * 将fn的`prototype`属性赋值为Object类型的对象, 并将`prototype.constructor`指向fn自身
+
+**原型关系**
+通过一张图来说明Object、Function及其实例的关系
+![image](/images/object-function.png)
