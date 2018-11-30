@@ -20,7 +20,7 @@ class A {
   }
 }
 ```
-**ES2015**
+**ES5**
 ```javascript
 /* ..._createClass... */
 /* ..._classCallCheck... */
@@ -63,7 +63,7 @@ class A {}
 
 class B extends A {}
 ```
-**ES2015**
+**ES5**
 ```javascript
 var A = function A() {
   _classCallCheck(this, A);
@@ -93,12 +93,6 @@ function _classCallCheck(instance, Constructor) {
 }
 
 function _inherits(subClass, superClass) {
-  if (typeof superClass !== "function" && superClass !== null) {
-    throw new TypeError(
-      "Super expression must either be null or a function, not " +
-        typeof superClass
-    );
-  }
   // 原型的继承 (私有方法和属性)
   subClass.prototype = Object.create(superClass && superClass.prototype, {
     constructor: {    // constructor指向subClass构造函数
@@ -219,14 +213,14 @@ Function.prototype.__proto__ === Object.prototype   // ORIGIN_OBJECT
 Object.prototype.__proto__ === null   // null
 ```
 我们得到了两个最原始的**对象**类型:
-* `{constructor: ƒ, __defineGetter__: ƒ, …}`, 原始函数, 与关键字new的构造函数实例化有关
-* `ƒ () { [native code] }`, 原始对象, 所有对象原型链的终点
+* `{constructor: ƒ, __defineGetter__: ƒ, …}`, 原始对象, 处于原型链上描述Object类型, 所有原型链的终点
+* `ƒ () { [native code] }`, 原始函数, 处于原型链上描述Function类型, 与关键字new的构造函数实例化有关
 
 **构造函数实例化**
 
 这里有两个比较重要的属性
-* `prototype`, 用于构造函数实例化时生成原型链, 形成继承关系
-* `__proto__`, Function.prototype, 作为构造函数的类继承, 或是作为对象的原型继承
+* `prototype`, 作为构造函数, 用于实例化时生成原型链`__proto__`
+* `__proto__`, 作为函数实例, 指向Function.prototype, 形成原型链
 
 ```javascript
 /* Object实例化 */
@@ -253,6 +247,12 @@ Function的实例化稍有不同:
 * 实例对象（fn）为Function类型, 可执行实例化生成新对象（Object类型）
 * 将fn的`prototype`属性赋值为Object类型的对象, 并将`prototype.constructor`指向fn自身
 
-**原型关系**
+**函数是一类特殊的Object, 它的实例是一个对象; Function是一个特殊的函数, 它的实例是一个函数类型的对象**
+* `Object.prototype`和`Function.prototype`是两段原生代码（原生对象类型）, 都位于原型链上, 分别作为`Object`和`Function`的类型判断依据
+* `Object`是个函数类型的对象, 可以看做`Function`的一个实例, 那么`Object.__proto__ = Function.prototype`符合自身为函数类型
+* `Function`是个函数类型的对象, 可以看做`Function`的一个实例, 那么`Function.__proto__ = Function.prototype`符合自身为函数类型
+* `Object`和`Function`都是对象, `Object.prototype`应该存在于原型链上, 那么`Function.prototype.__proto__ = Object.prototype`符合自身为对象类型
+* `Function`的实例为`fn`, 那么`Function.prototype`和`Object.prototype`都在`fn`的原型链上, 符合`Function`的实例是函数也是对象
+
 通过一张图来说明Object、Function及其实例的关系
 ![image](/images/object-function.png)
