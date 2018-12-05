@@ -1,25 +1,94 @@
 ---
-title: Redux源码解析（一）
-date: 2017-09-19
+title: Redux源码解析
+date: 2018-12-05
 tags: redux
 author: henry
 ---
-# 前言
-Redux是React的一个状态管理工具，或许大家已经比较熟悉了它的使用方式，比如创建store，发起action，使用reducer更新state等等，那么它的内部是如何实现的呢？为了更好的熟悉和使用Redux，我们选择了`3.7.2`版本进行源码阅读，并在这里跟大家分享一下心得。
 
-## 目录结构
-redux的代码比较精炼, 按功能分为四部分
-* createStore.js 创建store实例
-* combineReducers.js 组合多个reducer函数，生成新的reducer
-* compose.js & applyMiddleware.js 添加中间件
-* bindActionCreators.js 给actions绑定dispatch方法
+Redux是一个状态管理工具，或许大家已经比较熟悉了它的使用方式，比如创建`store`、派发`action`、利用`reducer`更新`state`等等。
 
-其中前三个是核心功能，下面我们依次解读源码。
+## 工作流
 
-## createStore.js
-### createStore
+我们先通过一段代码, 看一下redux是如何使用的
+```javascript
+/* store */
+import { createStore, applyMiddleware, compose } from 'redux';
+import { Provider } from 'react-redux';
+import thunk from 'redux-thunk';
+import reducers from './reducers';
+
+// 初始化state
+const initialState = { ... };
+
+// 自定义中间件
+const logger = store => next => action => {
+  console.info('触发行为', action);
+  return next(action);
+};
+
+// 实例化store
+const store = createStore(
+  reducers,
+  initialState,
+  applyMiddleware( thunk, logger ),
+);
+
+// 通过Provider给应用绑定store
+class App extends Component {
+  render() {
+    return (
+      <Provider store={store}>
+        <Router history={history} routes={routes} />
+      </Provider>
+    )
+  }
+}
 ```
+```javascript
+/* reducer */
+import { combineReducers } from 'redux';
+import { routerReducer as routing } from 'react-router-redux';
+
+// 通过combineReducers合并多个reducer, 返回包装后的reducer
+export default combineReducers({ routing, ... });
+```
+```javascript
+/* page */
+import React, { Component } from 'react'
+import { connect } from 'react-redux'
+import { bindActionCreators } from 'redux'
+import actions from './action'
+
+class Page extends Component { ... }
+
+// 注册模块, 获得state & dispatch
+export default connect(
+  state => ({ page: state.page }),
+  dispatch => ({ actions: bindActionCreators(actions, dispatch) })
+)(Page)
+```
+通过一张图了解Redux是如何工作的
+
+![image](/images/redux-react.png)
+
+## Redux源码
+
+redux的代码比较精炼, 按功能分为四部分
+* createStore.js 创建`store`, 注册监听函数, 提供原始`dispatch`函数等
+* combineReducers.js `reducer`的包装函数, 更新`state`
+* applyMiddleware.js `store`的修饰函数, 注册中间件
+* compose.js 组合函数, 接受函数数组, 返回一个包装后的函数
+* bindActionCreators.js 给`actionCreator`绑定`dispatch`
+
+其中前三个是核心功能，下面我们依次解读源码。
+
+### createStore.js
+
+提供`createStore`方法, 创建新的`store`对象
+
+```javascript
 export default function createStore(reducer, preloadedState, enhancer) {
+  // 处理参数顺序
   if (typeof preloadedState === 'function' && typeof enhancer === 'undefined') {
     enhancer = preloadedState
     preloadedState = undefined
@@ -32,193 +101,137 @@ export default function createStore(reducer, preloadedState, enhancer) {
 
     return enhancer(createStore)(reducer, preloadedState)
   }
+
+  /* ... */
+}
 ```
+
 它接收三个参数:
-* reducer **`[Function]`** 顶层reducer, 接收store的全局state和待处理的action, 返回新的全局state
-* preloadedState **`[Object]`** 初始化的state对象
-* enhancer **`[Function]`** 添加中间件, 由applyMiddleware生成
+* `reducer`, 包装后的`reducer`函数
+* `preloadedState`, 初始化的`state`对象
+* `enhancer`, `store`的修饰函数, 添加中间件
 
-在createStore函数内, redux定义了一系列的变量和方法, 用于缓存数据和触发事件  
+在`createStore`中定义了一些重要的方法和属性
 
-### getState & subscribe
+**getState**
 
-* getState(): 获取全局state
-* subscribe(): 注册监听函数
+获取当前`store`维护的数据对象`state`
 
-
-```
-  let currentReducer = reducer
-  let currentState = preloadedState
-  let currentListeners = []
-  let nextListeners = currentListeners
-  let isDispatching = false
-	
-  function ensureCanMutateNextListeners() {
-    if (nextListeners === currentListeners) {
-      nextListeners = currentListeners.slice()
-    }
-  }
-	
-  /**
-   * Reads the state tree managed by the store.
-   *
-   * @returns {any} The current state tree of your application.
-   */
-  function getState() {
-    return currentState
-  }
-	
-  /**
-   * Adds a change listener. It will be called any time an action is dispatched,
-   * and some part of the state tree may potentially have changed. You may then
-   * call `getState()` to read the current state tree inside the callback.
-   *
-   ......
-	 
-   *
-   * @param {Function} listener A callback to be invoked on every dispatch.
-   * @returns {Function} A function to remove this change listener.
-   */
-  function subscribe(listener) {
-    if (typeof listener !== 'function') {
-      throw new Error('Expected listener to be a function.')
-    }
-
-    let isSubscribed = true
-
-    ensureCanMutateNextListeners()
-    nextListeners.push(listener)
-
-    return function unsubscribe() {
-      if (!isSubscribed) {
-        return
-      }
-
-      isSubscribed = false
-
-      ensureCanMutateNextListeners()
-      const index = nextListeners.indexOf(listener)
-      nextListeners.splice(index, 1)
-    }
-  }
+```javascript
+/**
+  * Reads the state tree managed by the store.
+  *
+  * @returns {any} The current state tree of your application.
+  */
+function getState() {
+  return currentState
+}
 ```
 
-这里缓存了三个数据: 
-* currentState: 全局state
-* currentListeners: 已生效的监听函数队列
-* nextListeners: 即将生效的监听函数队列
+**dispatch**
 
-
-每当改变监听函数队列时, 都会调用 ensureCanMutateNextListeners, 以确保对于 nextListeners 的改变不会影响 currentListeners  
-调用 store.dispatch 时, 会把 nextListeners 赋值给 currentListeners
-
-### dispatch
-
-这是最原始的dispatch函数 ( 为什么说是最原始的, 看到中间件的时候就会明白了 )  
-
-其功能如下: 
-* 检查 action 类型
-* 调用顶层 reducer, 获取新的全局state
+原始dispatch函数, 其功能如下: 
+* 检查`action`类型
+* 调用包装后的`reducer`, 更新`state`
 * 调用监听函数队列
 
+```javascript
+let currentReducer = reducer    // 包装后的reducer入口函数
+let currentState = preloadedState   // 当前store维护的数据对象
+let currentListeners = []   // 当前的监听函数队列
+let nextListeners = currentListeners    // 即将生效的监听函数队列
+let isDispatching = false   // 派发事件的状态
 
-````
-  /**
-   * Dispatches an action. It is the only way to trigger a state change.
-   ......
-	 
-   * @param {Object} action A plain object representing “what changed”. It is
-   * a good idea to keep actions serializable so you can record and replay user
-   * sessions, or use the time travelling `redux-devtools`. An action must have
-   * a `type` property which may not be `undefined`. It is a good idea to use
-   * string constants for action types.
-   ......
-	 
-   * @returns {Object} For convenience, the same action object you dispatched.
-   */
-  function dispatch(action) {
-    if (!isPlainObject(action)) {
-      throw new Error(
-        'Actions must be plain objects. ' +
-        'Use custom middleware for async actions.'
-      )
-    }
-
-    if (typeof action.type === 'undefined') {
-      throw new Error(
-        'Actions may not have an undefined "type" property. ' +
-        'Have you misspelled a constant?'
-      )
-    }
-
-    if (isDispatching) {
-      throw new Error('Reducers may not dispatch actions.')
-    }
-
-    try {
-      isDispatching = true
-      currentState = currentReducer(currentState, action)
-    } finally {
-      isDispatching = false
-    }
-
-    const listeners = currentListeners = nextListeners
-    for (let i = 0; i < listeners.length; i++) {
-      const listener = listeners[i]
-      listener()
-    }
-
-    return action
+function dispatch(action) {
+  // 处理action, 更新state
+  try {
+    isDispatching = true
+    currentState = currentReducer(currentState, action)
+  } finally {
+    isDispatching = false
   }
-````
+  // 调用所有的监听函数, 触发回调事件
+  const listeners = (currentListeners = nextListeners)
+  for (let i = 0; i < listeners.length; i++) {
+    const listener = listeners[i]
+    listener()
+  }
 
-createStore执行完后, 发出初始化的action
+  return action
+}
 ```
+
+**subscribe**
+
+注册的回调函数, 监听`dispatch`事件
+
+```javascript
+function ensureCanMutateNextListeners() {
+  if (nextListeners === currentListeners) {
+    nextListeners = currentListeners.slice()
+  }
+}
+
+function subscribe(listener) {
+  // 私有的注册状态
+  let isSubscribed = true
+  // 确保即将生效的监听函数队列可用
+  ensureCanMutateNextListeners()
+  nextListeners.push(listener)
+
+  // 返回监听事件的注销函数
+  return function unsubscribe() {
+    if (!isSubscribed) {
+      return
+    }
+
+    isSubscribed = false
+
+    ensureCanMutateNextListeners()
+    const index = nextListeners.indexOf(listener)
+    nextListeners.splice(index, 1)
+  }
+}
+```
+
+每当注册监听函数时, 会将其加入`nextListeners`队列; 在下次调用`dispatch`时, 将`nextListeners`的值更新到当前的监听函数队列`currentListeners`
+
+`createStore`调用完成之前, 会发出`ActionTypes.INIT`, 用于生成初始化的`state`对象.
+```javascript
 // When a store is created, an "INIT" action is dispatched so that every
-  // reducer returns their initial state. This effectively populates
-  // the initial state tree.
-  dispatch({ type: ActionTypes.INIT })
+// reducer returns their initial state. This effectively populates
+// the initial state tree.
+dispatch({ type: ActionTypes.INIT })
 ```
 
-## combineReducers.js
-在执行核心代码前，做了许多校验和错误处理
-### combineReducers
-接受一个对象，返回一个函数，主要逻辑如下：
-* 处理传入的对象, 将所有值为函数的属性，缓存为reducers对象
-* 返回一个combine函数，作为新的reducer，接收 state & action
-* 当执行combine时，调用内部缓存的reducers对象，以属性名为键值，将所有reducer的执行结果保存为一个对象
-* 判断 state 是否改变，决定返回新的 nextState 或者传入的 state
+### combineReducers.js
 
-```
-/**
- * Turns an object whose values are different reducer functions, into a single
- * reducer function. It will call every child reducer, and gather their results
- * into a single state object, whose keys correspond to the keys of the passed
- * reducer functions.
- */
+该模块的核心功能如下:
+* 将多个`reducers`包装成一个新的`combine`函数, 接受两个参数`state`和`action`
+* 以`reducers`的函数名为`key`, 返回值为值, 生成对应的`state`对象
+* 被调用时, 将`state`根据`key`, 拆分成多个子`state`, 与`action`一起传递给对应的子`reducer`函数
+* `combine`函数可以作为`reducer`, 通过`combineReducers`生成新的`combine`, 形成`state tree`
+
+```javascript
 export default function combineReducers(reducers) {
   const reducerKeys = Object.keys(reducers)
-  const finalReducers = {}
-	// 获取所有值为函数的属性，组成新 reducers 对象
+  const finalReducers = {} // 当前层级的reducer集合
+
   for (let i = 0; i < reducerKeys.length; i++) {
     const key = reducerKeys[i]
-
     if (typeof reducers[key] === 'function') {
       finalReducers[key] = reducers[key]
     }
   }
+
   const finalReducerKeys = Object.keys(finalReducers)
 
-  let unexpectedKeyCache
-  if (process.env.NODE_ENV !== 'production') {
-    unexpectedKeyCache = {}
-  }
-
-  // 返回新的 reducer 函数
+  // 返回新的reducer函数
   return function combination(state = {}, action) {
     let hasChanged = false
     const nextState = {}
-		// 遍历 reducers 对象, 将每个函数的结果保存到 nextState 中
+
+    // 处理所有的reducer, 更新当前层级的state对象
     for (let i = 0; i < finalReducerKeys.length; i++) {
       const key = finalReducerKeys[i]
       const reducer = finalReducers[key]
@@ -231,24 +244,105 @@ export default function combineReducers(reducers) {
       nextState[key] = nextStateForKey
       hasChanged = hasChanged || nextStateForKey !== previousStateForKey
     }
-		// 如果 nextState 改变, 返回新的 state
+    // hasChanged为true, 则返回新的state
     return hasChanged ? nextState : state
   }
 }
 ```
 
-## bindActionCreators.js
+### applyMiddleware.js
+
+通过修饰函数, 为`store`添加中间件, 并在`dispatch`调用时依次执行
+
+```javascript
+export default function applyMiddleware(...middlewares) {
+  // 返回store的修饰函数
+  return createStore => (...args) => {
+    const store = createStore(...args)
+
+    // 初始化final dispatch
+    let dispatch = () => {
+      throw new Error(
+        `Dispatching while constructing your middleware is not allowed. ` +
+          `Other middleware would not be applied to this dispatch.`
+      )
+    }
+
+    // 中间件参数
+    const middlewareAPI = {
+      getState: store.getState,
+      dispatch: (...args) => dispatch(...args) // 封装一层的final dispatch, 作为中间件中的dispatch函数
+    }
+
+    // 初始化的中间件队列
+    const chain = middlewares.map(middleware => middleware(middlewareAPI))
+    // 中间件变为逐层调用的组合关系, 并包装原始的dispatch, 赋值给final dispatch
+    dispatch = compose(...chain)(store.dispatch)
+
+    return {
+      ...store,
+      dispatch
+    }
+  }
+}
+
+/* import from compose.js */
+function compose(...funcs) {
+  if (funcs.length === 0) {
+    return arg => arg
+  }
+
+  if (funcs.length === 1) {
+    return funcs[0]
+  }
+  // 数组变为组合: [f, b, c, ...] => f(b(c(...)))
+  return funcs.reduce((a, b) => (...args) => a(b(...args)))
+}
 ```
+
+* `store`上的原始`dispatch`函数, 经过中间件的包装, 生成了新的`dispatch`函数
+* `applyMiddleware`返回的修饰函数, 将`store.dispatch`替换成包装后的`dispatch`, 并返回新的`store`
+* 中间件的调用顺序为, 从左到右依次调用
+
+![image](/images/redux-middleware.png)
+
+**Middleware**
+
+中间件的结构较为复杂, 它是由多层函数的**柯里化**构成, 我们以`redux-thunk`为例了解其实现机制
+
+```javascript
+/* redux-thunk */
+function createThunkMiddleware(extraArgument) {
+  // 返回中间件
+  return ({ dispatch, getState }) => next => action => {
+    if (typeof action === 'function') {
+      return action(dispatch, getState, extraArgument);
+    }
+
+    return next(action);
+  };
+}
+
+const thunk = createThunkMiddleware();
+thunk.withExtraArgument = createThunkMiddleware;
+
+export default thunk;
+```
+
+* 包装层, 获得`store`实例, 在applyMiddleware中被调用, 生成用于中间件链式调用的传递函数
+* 传递层, 获得钩子函数`next`, 返回自身的调用钩子, 作为参数传递给下个中间件的传递函数
+* 逻辑层, 钩子函数（包装后的`dispatch`）, 获得`action`, 处理中间件业务逻辑, 调用上一个中间件的钩子`next(action)`, 形成链式调用直至`store.dispatch(action)`
+
+### bindActionCreators.js
+
+给`actionCreator`绑定`dispatch`函数
+
+```javascript
 function bindActionCreator(actionCreator, dispatch) {
+  // 返回绑定后的函数, 可以直接调用, 派发action
   return (...args) => dispatch(actionCreator(...args))
 }
 
-/**
- * Turns an object whose values are action creators, into an object with the
- * same keys, but with every function wrapped into a `dispatch` call so they
- * may be invoked directly. This is just a convenience method, as you can call
- * `store.dispatch(MyActionCreators.doSomething())` yourself just fine.
- */
 export default function bindActionCreators(actionCreators, dispatch) {
   if (typeof actionCreators === 'function') {
     return bindActionCreator(actionCreators, dispatch)
@@ -256,6 +350,7 @@ export default function bindActionCreators(actionCreators, dispatch) {
 
   const keys = Object.keys(actionCreators)
   const boundActionCreators = {}
+  // 逐个绑定actionCreator
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]
     const actionCreator = actionCreators[key]
@@ -263,10 +358,149 @@ export default function bindActionCreators(actionCreators, dispatch) {
       boundActionCreators[key] = bindActionCreator(actionCreator, dispatch)
     }
   }
+  // 返回绑定后的actionCreators对象, 结构与之前一样
   return boundActionCreators
 }
 ```
 
-这个就比较简单了，actionCreator(s) => 绑定dispatch的actionCreator(s)
-* 判断 actionCreators 类型，若为函数，直接返回绑定后的 function
-* 若 actionCreators 为对象，依次给属性对应的函数绑定dispatch，并返回新生成的map对象
+这个概念就比较简单了
+* 判断`actionCreators`类型，若为函数，直接返回绑定后的`function`
+* 若`actionCreators`为对象，依次给属性对应的函数绑定`dispatch`，并返回新生成的map对象
+* 绑定后的`actionCreator`, 可以直接调用并派发`action`
+
+## react-redux
+
+`Redux`是一个独立的数据管理工具, 如果想让它和`React`一起工作, 需要引入`react-redux`模块, 它主要提供`Provider`和`connect`两个API.
+
+**Provider**
+
+本身为`ReactComponent`, 通过`context`为子元素提供`store`对象
+
+```javascript
+export default class Provider extends Component {
+  getChildContext() {
+    return { store: this.store }
+  }
+
+  constructor(props, context) {
+    super(props, context)
+    this.store = props.store
+  }
+
+  render() {
+    // 只允许有一个子元素
+    return Children.only(this.props.children)
+  }
+}
+
+Provider.propTypes = {
+  store: storeShape.isRequired,
+  children: PropTypes.element.isRequired
+}
+
+Provider.childContextTypes = {
+  store: storeShape.isRequired
+}
+```
+
+**connect**
+
+修饰函数, 为`ReactComponent`提供`state`和`dispatch`, 并将修饰后的属性合并到`ReactComponent`的`props`上
+
+```javascript
+export default function connect(mapStateToProps, mapDispatchToProps, mergeProps, options = {}) {
+
+  /* ... */
+
+  // 包装函数
+  return function wrapWithConnect(WrappedComponent) {
+    return class Connect extends Component {
+      constructor(props, context) {
+        super(props, context)
+        this.version = version
+        this.store = props.store || context.store   // 获取store
+
+        const storeState = this.store.getState()
+        this.state = { storeState }   // 初始化state
+        this.clearCache()
+      }
+      computeStateProps() { ... }
+      computeDispatchProps() { ... }
+      render() {
+        /* ... */
+        this.renderedElement = createElement(WrappedComponent,
+          this.mergedProps
+        );
+        return this.renderedElement
+      }
+      trySubscribe() {
+        if (shouldSubscribe && !this.unsubscribe) {
+          this.unsubscribe = this.store.subscribe(this.handleChange.bind(this))
+          this.handleChange()
+        }
+      }
+      tryUnsubscribe() {
+        if (this.unsubscribe) {
+          this.unsubscribe()
+          this.unsubscribe = null
+        }
+      }
+      handleChange() {
+        if (!this.unsubscribe) return
+        const storeState = this.store.getState()
+        const prevStoreState = this.state.storeState
+        if (prevStoreState === storeState) return
+        this.hasStoreStateChanged = true
+        this.setState({ storeState })
+      }
+    }
+  }
+}
+```
+
+**react + redux**
+
+在入口文件中使用`Provider`, 为`App`中的所有子元素提供`store`对象
+```javascript
+import React from "react";
+import ReactDOM from "react-dom";
+
+import { Provider } from "react-redux";
+import store from "./store";
+
+import App from "./App";
+
+const rootElement = document.getElementById("root");
+ReactDOM.render(
+  <Provider store={store}>
+    <App />
+  </Provider>,
+  rootElement
+);
+```
+
+对需要用到`redux`状态管理的`ReactComponent`使用`connect`进行包装, 通过`mapStateToProps`和`mapDispatchToProps`参数/方法, 将处理后的`state`和`dispatch`合并到`ReactComponent`的`props`上
+
+```javascript
+import { connect } from "react-redux";
+import { increment, decrement, reset } from "./actionCreators";
+
+// const Counter = ...
+
+const mapStateToProps = (state /*, ownProps*/) => {
+  return {
+    counter: state.counter
+  };
+};
+
+/*
+ * 该参数为对象时, react-redux内部通过bindActionCreators绑定dispatch
+ * 该参数为函数时, 接受dispatch作为参数, 返回已绑定dispatch的actions
+**/
+const mapDispatchToProps = { increment, decrement, reset };
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(Counter);
+```
