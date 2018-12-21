@@ -5,17 +5,17 @@ tags: redux
 author: henry
 ---
 
-Redux是一个状态管理工具，或许大家已经比较熟悉了它的使用方式，比如创建`store`、派发`action`、利用`reducer`更新`state`等等。
+Redux是一个状态管理工具，它维护全局的`store`, 通过派发`action`利用`reducer`更新`state`.
 
 ## 工作流
 
-我们先通过一段代码, 看一下redux是如何使用的
+我们先通过一段代码, 看一下redux在实际项目中是如何使用的
+
+**实例化Store**
 ```javascript
-/* store */
-import { createStore, applyMiddleware, compose } from 'redux';
-import { Provider } from 'react-redux';
+import { createStore, applyMiddleware } from 'redux';
 import thunk from 'redux-thunk';
-import reducers from './reducers';
+import reducers from './reducer';
 
 // 初始化state
 const initialState = { ... };
@@ -27,13 +27,20 @@ const logger = store => next => action => {
 };
 
 // 实例化store
-const store = createStore(
+export default createStore(
   reducers,
   initialState,
   applyMiddleware( thunk, logger ),
 );
+```
 
-// 通过Provider给应用绑定store
+**入口模块**, 通过Provider绑定全局store
+
+```javascript
+/* index.js */
+import { Provider } from 'react-redux';
+import store from './store';
+
 class App extends Component {
   render() {
     return (
@@ -44,14 +51,9 @@ class App extends Component {
   }
 }
 ```
-```javascript
-/* reducer */
-import { combineReducers } from 'redux';
-import { routerReducer as routing } from 'react-router-redux';
 
-// 通过combineReducers合并多个reducer, 返回包装后的reducer
-export default combineReducers({ routing, ... });
-```
+**业务模块**, 使用connect注册当前页面, 获取state和dispatch
+
 ```javascript
 /* page */
 import React, { Component } from 'react'
@@ -59,7 +61,14 @@ import { connect } from 'react-redux'
 import { bindActionCreators } from 'redux'
 import actions from './action'
 
-class Page extends Component { ... }
+class Page extends Component {
+
+  /* ... */
+
+  componentDidMount() {
+    const { page, actions } = this.props;
+  }
+}
 
 // 注册模块, 获得state & dispatch
 export default connect(
@@ -67,9 +76,52 @@ export default connect(
   dispatch => ({ actions: bindActionCreators(actions, dispatch) })
 )(Page)
 ```
+
 通过一张图了解Redux是如何工作的
 
 ![image](/images/redux-react.png)
+
+**reducer.js**
+```javascript
+import { combineReducers } from 'redux'
+import { USER_MANAGER_ADD_XXX } from './action'
+
+function reducerFn(state={}, action) {
+  switch (action.type) {
+    case USER_MANAGER_ADD_XXX:
+      return {
+        ...state,
+        ...action.payload
+      }
+    default:
+      return state
+  }
+}
+
+// 通过combineReducers合并多个reducer, 返回包装后的reducer
+export default combineReducers({
+   reducerFn,
+   /* more reducers */
+})
+```
+
+**action.js**
+```javascript
+export const USER_MANAGER_ADD_XXX = "USER_MANAGER_ADD_XXX"
+
+// action creator
+function add_XXX(param) { 
+  // 返回一个action
+  return {
+    type: USER_MANAGER_ADD_XXX,
+    payload: {}
+  }
+}
+
+export default {
+  add_XXX
+}
+```
 
 ## Redux源码
 
@@ -103,6 +155,13 @@ export default function createStore(reducer, preloadedState, enhancer) {
   }
 
   /* ... */
+
+  return {
+    dispatch,
+    subscribe,
+    getState,
+    ...
+  }
 }
 ```
 
@@ -194,9 +253,9 @@ function subscribe(listener) {
 }
 ```
 
-每当注册监听函数时, 会将其加入`nextListeners`队列; 在下次调用`dispatch`时, 将`nextListeners`的值更新到当前的监听函数队列`currentListeners`
+每当注册监听函数时, 会将其加入`nextListeners`队列; 在下次调用`dispatch`时, 将`nextListeners`的值更新到当前的监听函数队列`currentListeners`, 确保了每次`dispatch`不会影响到之后注册的`listener`.
 
-`createStore`调用完成之前, 会发出`ActionTypes.INIT`, 用于生成初始化的`state`对象.
+`createStore`调用完成之前, 会发出一个初始化`action`, 用于生成初始化的`state`.
 ```javascript
 // When a store is created, an "INIT" action is dispatched so that every
 // reducer returns their initial state. This effectively populates
