@@ -93,7 +93,7 @@ function _classCallCheck(instance, Constructor) {
 }
 
 function _inherits(subClass, superClass) {
-  // 原型的继承 (私有方法和属性)
+  // 原型的继承 (原型方法和属性)
   subClass.prototype = Object.create(superClass && superClass.prototype, {
     constructor: {    // constructor指向subClass构造函数
       value: subClass,
@@ -111,7 +111,7 @@ function _inherits(subClass, superClass) {
 
 ```
 在`_inherits`函数的代码中可以看到, 类的继承是通过两条原型链实现的
-1. 私有方法的原型链
+1. 原型的继承
 ```
 const a = new A();
 const b = new B();
@@ -125,7 +125,7 @@ b.__proto__.__proto__ === A.prototype   // true
 b instanceof B    // true
 b instanceof A    // ???
 ```
-2. 静态方法的原型链
+2. 静态方法的继承
 ```
 A.print = () => { console.log('print, static in A') }
 A.test = () => { console.log('test, static in A') }
@@ -135,7 +135,7 @@ B.test()    // test, static in B
 B.print()   // ???
 ```
 **类继承的实现方式已经比较清楚了**
-* 通过类的`prototype`属性, 构造出类实例的原型链, 实现私有属性的继承
+* 通过类的`prototype`属性, 构造出类实例的原型链, 实现原型的继承
 * 通过类的`__proto__`属性, 构造出类的原型链, 实现静态属性的继承
 
 **继承关系（B extends A）**
